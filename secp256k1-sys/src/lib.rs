@@ -922,6 +922,12 @@ extern "C" {
 
 #[cfg(not(secp256k1_fuzz))]
 extern "C" {
+    // Custom internal wrapper exported via depend/my_internal_wrappers.c.patch
+    #[cfg_attr(
+        not(rust_secp_no_symbol_renaming),
+        link_name = "rustsecp256k1_v0_11_scalar_is_zero_from32"
+    )]
+    pub fn secp256k1_scalar_is_zero_from32(a32: *const c_uchar) -> c_int;
     // Contexts
     #[cfg_attr(
         not(rust_secp_no_symbol_renaming),
