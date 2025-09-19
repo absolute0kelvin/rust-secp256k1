@@ -784,7 +784,7 @@ int rustsecp256k1_v0_11_tagged_sha256(const rustsecp256k1_v0_11_context* ctx, un
 # include "modules/ellswift/main_impl.h"
 #endif
 
-SECP256K1_API int rustsecp256k1_v0_11_scalar_is_zero_from32(const unsigned char *a32) {
+SECP256K1_API int rustsecp256k1_v0_11_scalar_is_zero_from32(const rustsecp256k1_v0_11_context* ctx, const unsigned char *a32) {
     rustsecp256k1_v0_11_scalar a;
     int overflow = 0;
     rustsecp256k1_v0_11_scalar_set_b32(&a, a32, &overflow);
