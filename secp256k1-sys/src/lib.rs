@@ -928,6 +928,13 @@ extern "C" {
         link_name = "rustsecp256k1_v0_11_scalar_is_zero_from32"
     )]
     pub fn secp256k1_scalar_is_zero_from32(ctx: *const Context, a32: *const c_uchar) -> c_int;
+
+    #[cfg_attr(
+        not(rust_secp_no_symbol_renaming),
+        link_name = "rustsecp256k1_v0_v11_verify_in_batch_rdat"
+    )]
+    pub fn rustsecp256k1_v0_v11_verify_in_batch_rdat(ctx: *const Context, entries: *const c_uchar, n: size_t, multiplier32: *const c_uchar) -> c_int;
+
     // Contexts
     #[cfg_attr(
         not(rust_secp_no_symbol_renaming),
