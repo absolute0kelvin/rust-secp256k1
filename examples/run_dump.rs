@@ -7,27 +7,27 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
-use secp256k1::ecdsa::recovery::{RecoverableSignature, RecoveryId};
-use secp256k1::key::PublicKey;
-use secp256k1::rand::{rng, RngCore};
+use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
+use secp256k1::PublicKey;
+use rand::{rng, RngCore};
 use secp256k1::{Message, SecretKey};
 
 #[derive(Clone, Copy)]
 struct Entry {
-    Q65: [u8; 65],
-    R65: [u8; 65],
+    q65: [u8; 65],
+    r65: [u8; 65],
     r32: [u8; 32],
     s32: [u8; 32],
     z32: [u8; 32],
     v: u8,
 }
 
-fn build_R65_from_r_v(r32: [u8; 32], v: u8) -> [u8; 65] {
+fn build_r65_from_r_v(r32: [u8; 32], v: u8) -> [u8; 65] {
     let mut comp = [0u8; 33];
     comp[0] = if v & 1 == 1 { 0x03 } else { 0x02 };
     comp[1..].copy_from_slice(&r32);
-    let R = PublicKey::from_slice(&comp).expect("invalid R from r,v");
-    R.serialize_uncompressed()
+    let r = PublicKey::from_slice(&comp).expect("invalid R from r,v");
+    r.serialize_uncompressed()
 }
 
 fn rdat_serialize(entries: &[Entry]) -> Vec<u8> {
@@ -36,8 +36,8 @@ fn rdat_serialize(entries: &[Entry]) -> Vec<u8> {
     out.extend_from_slice(&[0, 0, 0, 1]);
     out.extend_from_slice(&(entries.len() as u64).to_be_bytes());
     for e in entries {
-        out.extend_from_slice(&e.Q65);
-        out.extend_from_slice(&e.R65);
+        out.extend_from_slice(&e.q65);
+        out.extend_from_slice(&e.r65);
         out.extend_from_slice(&e.r32);
         out.extend_from_slice(&e.s32);
         out.extend_from_slice(&e.z32);
@@ -50,8 +50,12 @@ fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>>
     let mut entries: Vec<Entry> = Vec::with_capacity(n);
 
     for _ in 0..n {
-        // Random valid secret key
-        let sk = SecretKey::new(&mut rng());
+        // Random valid secret key: sample until within curve order
+        let sk = loop {
+            let mut buf = [0u8; 32];
+            rng().fill_bytes(&mut buf);
+            if let Ok(sk) = SecretKey::from_secret_bytes(buf) { break sk; }
+        };
 
         // Random message
         let mut msg32 = [0u8; 32];
@@ -60,7 +64,7 @@ fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>>
 
         // Public key
         let pk = PublicKey::from_secret_key(&sk);
-        let Q65 = pk.serialize_uncompressed();
+        let q65 = pk.serialize_uncompressed();
 
         // Recoverable signature
         let sigr = RecoverableSignature::sign_ecdsa_recoverable(msg, &sk);
@@ -72,9 +76,9 @@ fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>>
         let mut r32 = [0u8; 32]; r32.copy_from_slice(&sig64[..32]);
 
         // Reconstruct R from (r,v)
-        let R65 = build_R65_from_r_v(r32, v);
+        let r65 = build_r65_from_r_v(r32, v);
 
-        entries.push(Entry { Q65, R65, r32, s32, z32: msg32, v });
+        entries.push(Entry { q65, r65, r32, s32, z32: msg32, v });
     }
 
     let rdat = rdat_serialize(&entries);
