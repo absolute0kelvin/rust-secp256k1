@@ -12,13 +12,13 @@ use std::{fs::File, io::Write, path::Path};
 /// Q65, R65 are uncompressed SEC1 encodings; r32, s32, z32 are 32-byte big-endian scalars; v is 0/1.
 #[derive(Clone, Copy)]
 #[repr(C)]
-struct BatchEntry {
-    q65: [u8; 65],
-    r65: [u8; 65],
-    r32: [u8; 32],
-    s32: [u8; 32],
-    z32: [u8; 32],
-    v: u8,
+pub struct BatchEntry {
+    pub q65: [u8; 65],
+    pub r65: [u8; 65],
+    pub r32: [u8; 32],
+    pub s32: [u8; 32],
+    pub z32: [u8; 32],
+    pub v: u8,
 }
 
 impl BatchEntry {
@@ -34,7 +34,7 @@ impl BatchEntry {
 
 fn serialize_uncompressed(pk: &PublicKey) -> [u8; 65] { pk.serialize_uncompressed() }
 
-fn build_r65_from_r_v(r32: [u8;32], v: u8) -> Result<[u8;65], Error> {
+pub fn build_r65_from_r_v(r32: [u8;32], v: u8) -> Result<[u8;65], Error> {
     let mut comp = [0u8; 33];
     comp[0] = if v & 1 == 1 { 0x03 } else { 0x02 };
     comp[1..].copy_from_slice(&r32);

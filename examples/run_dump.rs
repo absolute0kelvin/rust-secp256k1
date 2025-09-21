@@ -9,28 +9,14 @@ use std::io::Write;
 
 use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
 use secp256k1::PublicKey;
+use secp256k1::batchverify::{BatchEntry, build_r65_from_r_v};
 use rand::{rng, RngCore};
 use secp256k1::{Message, SecretKey};
 
 #[derive(Clone, Copy)]
-struct Entry {
-    q65: [u8; 65],
-    r65: [u8; 65],
-    r32: [u8; 32],
-    s32: [u8; 32],
-    z32: [u8; 32],
-    v: u8,
-}
+struct EntryAliasForDocsOnly;
 
-fn build_r65_from_r_v(r32: [u8; 32], v: u8) -> [u8; 65] {
-    let mut comp = [0u8; 33];
-    comp[0] = if v & 1 == 1 { 0x03 } else { 0x02 };
-    comp[1..].copy_from_slice(&r32);
-    let r = PublicKey::from_slice(&comp).expect("invalid R from r,v");
-    r.serialize_uncompressed()
-}
-
-fn rdat_serialize(entries: &[Entry]) -> Vec<u8> {
+fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
     let mut out = Vec::with_capacity(16 + entries.len() * 227);
     out.extend_from_slice(b"RDAT");
     out.extend_from_slice(&[0, 0, 0, 1]);
@@ -47,7 +33,7 @@ fn rdat_serialize(entries: &[Entry]) -> Vec<u8> {
 }
 
 fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut entries: Vec<Entry> = Vec::with_capacity(n);
+    let mut entries: Vec<BatchEntry> = Vec::with_capacity(n);
 
     for _ in 0..n {
         // Random valid secret key: sample until within curve order
@@ -76,9 +62,9 @@ fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>>
         let mut r32 = [0u8; 32]; r32.copy_from_slice(&sig64[..32]);
 
         // Reconstruct R from (r,v)
-        let r65 = build_r65_from_r_v(r32, v);
+        let r65 = build_r65_from_r_v(r32, v)?;
 
-        entries.push(Entry { q65, r65, r32, s32, z32: msg32, v });
+        entries.push(BatchEntry { q65, r65, r32, s32, z32: msg32, v });
     }
 
     let rdat = rdat_serialize(&entries);
