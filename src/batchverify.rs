@@ -32,9 +32,11 @@ impl BatchEntry {
     }
 }
 
-fn serialize_uncompressed(pk: &PublicKey) -> [u8; 65] { pk.serialize_uncompressed() }
+fn serialize_uncompressed(pk: &PublicKey) -> [u8; 65] {
+    pk.serialize_uncompressed()
+}
 
-pub fn build_r65_from_r_v(r32: [u8;32], v: u8) -> Result<[u8;65], Error> {
+pub fn build_r65_from_r_v(r32: [u8; 32], v: u8) -> Result<[u8; 65], Error> {
     let mut comp = [0u8; 33];
     comp[0] = if v & 1 == 1 { 0x03 } else { 0x02 };
     comp[1..].copy_from_slice(&r32);
@@ -43,8 +45,13 @@ pub fn build_r65_from_r_v(r32: [u8;32], v: u8) -> Result<[u8;65], Error> {
 }
 
 #[cfg(feature = "recovery")]
-fn recover_q65_from_rs_v_z(r32: [u8;32], s32: [u8;32], v: u8, z32: [u8;32]) -> Result<[u8;65], Error> {
-    let mut sig64 = [0u8;64];
+fn recover_q65_from_rs_v_z(
+    r32: [u8; 32],
+    s32: [u8; 32],
+    v: u8,
+    z32: [u8; 32],
+) -> Result<[u8; 65], Error> {
+    let mut sig64 = [0u8; 64];
     sig64[..32].copy_from_slice(&r32);
     sig64[32..].copy_from_slice(&s32);
     let rec = RecoveryId::from_u8_masked(v);
@@ -58,14 +65,21 @@ fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
     // RDAT header: 'R''D''A''T' + version 0x00000001 + big-endian u64 count
     let mut out = Vec::with_capacity(16 + entries.len() * 227);
     out.extend_from_slice(b"RDAT");
-    out.extend_from_slice(&[0,0,0,1]);
+    out.extend_from_slice(&[0, 0, 0, 1]);
     let n = entries.len() as u64;
     out.extend_from_slice(&n.to_be_bytes());
-    for e in entries { e.write_into(&mut out); }
+    for e in entries {
+        e.write_into(&mut out);
+    }
     out
 }
 
-pub struct Row { pub z32:[u8;32], pub r32:[u8;32], pub s32:[u8;32], pub v:u8 }
+pub struct Row {
+    pub z32: [u8; 32],
+    pub r32: [u8; 32],
+    pub s32: [u8; 32],
+    pub v: u8,
+}
 
 /// Build an RDAT buffer from parsed rows (no std required).
 #[cfg(all(feature = "alloc", feature = "recovery"))]
@@ -125,9 +139,13 @@ pub fn secp256k1_lookup_ecrecover_i(
     v: u8,
     z32: &[u8; 32],
 ) -> Option<[u8; 65]> {
-    if i >= n { return None; }
+    if i >= n {
+        return None;
+    }
     let need = i.checked_add(1)? * ENTRY_SIZE;
-    if entries.len() < need { return None; }
+    if entries.len() < need {
+        return None;
+    }
 
     let base = i * ENTRY_SIZE;
     let entry = &entries[base..base + ENTRY_SIZE];
@@ -139,14 +157,20 @@ pub fn secp256k1_lookup_ecrecover_i(
     let v_ref = entry[OFF_V];
 
     let v_norm = if v != 0 { 1 } else { 0 };
-    if v_ref != v_norm { return None; }
-    if r32 != r_ref { return None; }
-    if s32 != s_ref { return None; }
-    if z32 != z_ref { return None; }
+    if v_ref != v_norm {
+        return None;
+    }
+    if r32 != r_ref {
+        return None;
+    }
+    if s32 != s_ref {
+        return None;
+    }
+    if z32 != z_ref {
+        return None;
+    }
 
     let mut out = [0u8; 65];
     out.copy_from_slice(q65);
     Some(out)
 }
-
-

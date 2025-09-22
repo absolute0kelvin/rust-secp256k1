@@ -6,8 +6,8 @@
 use std::env;
 
 use secp256k1::batchverify::{
-    secp256k1_lookup_ecrecover_i, verify_in_batch_rdat,
-    ENTRY_SIZE, OFF_Q65, OFF_R65, OFF_R32, OFF_S32, OFF_Z32, OFF_V,
+    secp256k1_lookup_ecrecover_i, verify_in_batch_rdat, ENTRY_SIZE, OFF_Q65, OFF_R32, OFF_R65,
+    OFF_S32, OFF_V, OFF_Z32,
 };
 use secp256k1::rand::{rng, RngCore};
 use secp256k1::Secp256k1;
@@ -42,7 +42,10 @@ fn run_load(path: &str) -> Result<(), Box<dyn std::error::Error>> {
         let v = first[OFF_V];
 
         let matched = secp256k1_lookup_ecrecover_i(entries, n, 0, r32, s32, v, z32).is_some();
-        println!("lookup_ecrecover_i (i=0, file): {}", if matched { "matched Q" } else { "no match" });
+        println!(
+            "lookup_ecrecover_i (i=0, file): {}",
+            if matched { "matched Q" } else { "no match" }
+        );
     }
 
     Ok(())
@@ -57,5 +60,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     run_load(&args[0])
 }
-
-

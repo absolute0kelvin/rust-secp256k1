@@ -7,10 +7,10 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
+use rand::{rng, RngCore};
+use secp256k1::batchverify::{build_r65_from_r_v, BatchEntry};
 use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
 use secp256k1::PublicKey;
-use secp256k1::batchverify::{BatchEntry, build_r65_from_r_v};
-use rand::{rng, RngCore};
 use secp256k1::{Message, SecretKey};
 
 #[derive(Clone, Copy)]
@@ -40,7 +40,9 @@ fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>>
         let sk = loop {
             let mut buf = [0u8; 32];
             rng().fill_bytes(&mut buf);
-            if let Ok(sk) = SecretKey::from_secret_bytes(buf) { break sk; }
+            if let Ok(sk) = SecretKey::from_secret_bytes(buf) {
+                break sk;
+            }
         };
 
         // Random message
@@ -55,11 +57,16 @@ fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>>
         // Recoverable signature
         let sigr = RecoverableSignature::sign_ecdsa_recoverable(msg, &sk);
         let (recid, sig64) = sigr.serialize_compact();
-        let v = match recid { RecoveryId::Zero | RecoveryId::Two => 0, _ => 1 } as u8;
+        let v = match recid {
+            RecoveryId::Zero | RecoveryId::Two => 0,
+            _ => 1,
+        } as u8;
 
         // s32, z32, r32
-        let mut s32 = [0u8; 32]; s32.copy_from_slice(&sig64[32..]);
-        let mut r32 = [0u8; 32]; r32.copy_from_slice(&sig64[..32]);
+        let mut s32 = [0u8; 32];
+        s32.copy_from_slice(&sig64[32..]);
+        let mut r32 = [0u8; 32];
+        r32.copy_from_slice(&sig64[..32]);
 
         // Reconstruct R from (r,v)
         let r65 = build_r65_from_r_v(r32, v)?;
@@ -85,5 +92,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n: usize = args[1].parse().map_err(|_| "invalid n")?;
     run_dump(n, dump_path)
 }
-
-
