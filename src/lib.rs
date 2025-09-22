@@ -180,6 +180,7 @@ pub mod ellswift;
 pub mod musig;
 pub mod scalar;
 pub mod schnorr;
+pub mod batchverify;
 
 use core::marker::PhantomData;
 use core::ptr::NonNull;

@@ -783,3 +783,204 @@ int rustsecp256k1_v0_11_tagged_sha256(const rustsecp256k1_v0_11_context* ctx, un
 #ifdef ENABLE_MODULE_ELLSWIFT
 # include "modules/ellswift/main_impl.h"
 #endif
+
+SECP256K1_API int rustsecp256k1_v0_11_scalar_is_zero_from32(const rustsecp256k1_v0_11_context* ctx, const unsigned char *a32) {
+    rustsecp256k1_v0_11_scalar a;
+    int overflow = 0;
+    rustsecp256k1_v0_11_scalar_set_b32(&a, a32, &overflow);
+    if (overflow) return 0;
+    return rustsecp256k1_v0_11_scalar_is_zero(&a);
+}
+
+/* One precomputed tuple (all big-endian encodings) */
+typedef struct {
+    unsigned char Q65[65];     /* uncompressed pubkey */
+    unsigned char R65[65];     /* uncompressed R */
+    unsigned char r32[32];
+    unsigned char s32[32];
+    unsigned char z32[32];
+    unsigned char v;           /* 0 even, 1 odd */
+} rustsecp256k1_v0_11_batch_entry;
+
+/* ================== Batch verification implementation ================== */
+
+typedef struct {
+    const rustsecp256k1_v0_11_scalar *r_combined;
+    const rustsecp256k1_v0_11_scalar *s_combined;
+    const rustsecp256k1_v0_11_ge *Q_points;
+    const rustsecp256k1_v0_11_ge *R_points;
+    size_t num_entries;
+} rustsecp256k1_v0_11_batch_cb_data;
+
+static int rustsecp256k1_v0_11_batch_ecmult_callback(rustsecp256k1_v0_11_scalar *sc, rustsecp256k1_v0_11_ge *pt, size_t idx, void *data) {
+    rustsecp256k1_v0_11_batch_cb_data *d = (rustsecp256k1_v0_11_batch_cb_data*)data;
+    if (idx < d->num_entries) {
+        *sc = d->r_combined[idx];
+        *pt = d->Q_points[idx];
+        return 1;
+    } else if (idx < 2 * d->num_entries) {
+        size_t j = idx - d->num_entries;
+        *sc = d->s_combined[j];
+        *pt = d->R_points[j];
+        return 1;
+    }
+    return 0;
+}
+
+static rustsecp256k1_v0_11_scratch* rustsecp256k1_v0_11_scratch_create(const rustsecp256k1_v0_11_callback* error_callback, size_t size) {
+    const size_t base_alloc = ROUND_TO_ALIGN(sizeof(rustsecp256k1_v0_11_scratch));
+    void *alloc = checked_malloc(error_callback, base_alloc + size);
+    rustsecp256k1_v0_11_scratch* ret = (rustsecp256k1_v0_11_scratch *)alloc;
+    if (ret != NULL) {
+        memset(ret, 0, sizeof(*ret));
+        memcpy(ret->magic, "scratch", 8);
+        ret->data = (void *) ((char *) alloc + base_alloc);
+        ret->max_size = size;
+    }
+    return ret;
+}
+
+static void rustsecp256k1_v0_11_scratch_destroy(const rustsecp256k1_v0_11_callback* error_callback, rustsecp256k1_v0_11_scratch* scratch) {
+    if (scratch != NULL) {
+        if (rustsecp256k1_v0_11_memcmp_var(scratch->magic, "scratch", 8) != 0) {
+            rustsecp256k1_v0_11_callback_call(error_callback, "invalid scratch space");
+            return;
+        }
+        VERIFY_CHECK(scratch->alloc_size == 0); /* all checkpoints should be applied */
+        memset(scratch->magic, 0, sizeof(scratch->magic));
+        free(scratch);
+    }
+}
+
+static int rustsecp256k1_v0_11_verify_in_batch(
+    const rustsecp256k1_v0_11_context* ctx,
+    const rustsecp256k1_v0_11_batch_entry* entries,
+    size_t n,
+    const unsigned char* multiplier32
+) {
+    int overflow = 0;
+    rustsecp256k1_v0_11_scalar multiplier;
+    rustsecp256k1_v0_11_ge *Q = NULL;
+    rustsecp256k1_v0_11_ge *R = NULL;
+    rustsecp256k1_v0_11_scalar *r = NULL;
+    rustsecp256k1_v0_11_scalar *s = NULL;
+    rustsecp256k1_v0_11_scalar *z = NULL;
+    rustsecp256k1_v0_11_scalar *r_comb = NULL;
+    rustsecp256k1_v0_11_scalar *s_comb = NULL;
+    size_t i;
+    size_t i2;
+    size_t num_terms;
+    size_t scratch_size;
+    rustsecp256k1_v0_11_scratch* scratch;
+    rustsecp256k1_v0_11_scalar combined_z;
+    unsigned char seed[32] = {0x42};
+    rustsecp256k1_v0_11_scalar seed_scalar;
+    rustsecp256k1_v0_11_scalar a;
+    rustsecp256k1_v0_11_batch_cb_data cbd;
+    rustsecp256k1_v0_11_gej outj;
+    int ret;
+    int ok;
+    (void)ctx;
+    if (!entries || n == 0 || !multiplier32) return 0;
+
+    rustsecp256k1_v0_11_scalar_set_b32(&multiplier, multiplier32, &overflow);
+    if (overflow) return 0;
+
+    Q = (rustsecp256k1_v0_11_ge*)checked_malloc(&default_error_callback, n * sizeof(*Q));
+    R = (rustsecp256k1_v0_11_ge*)checked_malloc(&default_error_callback, n * sizeof(*R));
+    r = (rustsecp256k1_v0_11_scalar*)checked_malloc(&default_error_callback, n * sizeof(*r));
+    s = (rustsecp256k1_v0_11_scalar*)checked_malloc(&default_error_callback, n * sizeof(*s));
+    z = (rustsecp256k1_v0_11_scalar*)checked_malloc(&default_error_callback, n * sizeof(*z));
+    r_comb = (rustsecp256k1_v0_11_scalar*)checked_malloc(&default_error_callback, n * sizeof(*r_comb));
+    s_comb = (rustsecp256k1_v0_11_scalar*)checked_malloc(&default_error_callback, n * sizeof(*s_comb));
+    if (!Q || !R || !r || !s || !z || !r_comb || !s_comb) {
+        free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
+        return 0;
+    }
+
+    for (i = 0; i < n; i++) {
+        if (!rustsecp256k1_v0_11_eckey_pubkey_parse(&Q[i], entries[i].Q65, 65)) { overflow = 1; break; }
+        if (!rustsecp256k1_v0_11_eckey_pubkey_parse(&R[i], entries[i].R65, 65)) { overflow = 1; break; }
+        if (!rustsecp256k1_v0_11_ge_is_valid_var(&Q[i]) || rustsecp256k1_v0_11_ge_is_infinity(&Q[i])) { overflow = 1; break; }
+        if (!rustsecp256k1_v0_11_ge_is_valid_var(&R[i]) || rustsecp256k1_v0_11_ge_is_infinity(&R[i])) { overflow = 1; break; }
+        {
+            unsigned char yb[32];
+            int y_is_odd;
+            rustsecp256k1_v0_11_fe y = R[i].y;
+            rustsecp256k1_v0_11_fe_normalize_var(&y);
+            rustsecp256k1_v0_11_fe_get_b32(yb, &y);
+            y_is_odd = (yb[31] & 1);
+            if ((entries[i].v ? 1 : 0) != y_is_odd) { overflow = 1; break; }
+        }
+        rustsecp256k1_v0_11_scalar_set_b32(&r[i], entries[i].r32, &overflow); if (overflow || rustsecp256k1_v0_11_scalar_is_zero(&r[i])) { overflow = 1; break; }
+        rustsecp256k1_v0_11_scalar_set_b32(&s[i], entries[i].s32, &overflow); if (overflow || rustsecp256k1_v0_11_scalar_is_zero(&s[i]) || rustsecp256k1_v0_11_scalar_is_high(&s[i])) { overflow = 1; break; }
+        rustsecp256k1_v0_11_scalar_set_b32(&z[i], entries[i].z32, &overflow); if (overflow) { overflow = 1; break; }
+        {
+            rustsecp256k1_v0_11_fe x; unsigned char xb[32]; rustsecp256k1_v0_11_scalar r_from_R; int of2 = 0;
+            x = R[i].x;
+            rustsecp256k1_v0_11_fe_normalize_var(&x); rustsecp256k1_v0_11_fe_get_b32(xb, &x); rustsecp256k1_v0_11_scalar_set_b32(&r_from_R, xb, &of2);
+            if (!rustsecp256k1_v0_11_scalar_eq(&r_from_R, &r[i])) { overflow = 1; break; }
+        }
+    }
+    if (overflow) {
+        for (i2 = 0; i2 < n; i2++) { rustsecp256k1_v0_11_scalar_clear(&r[i2]); rustsecp256k1_v0_11_scalar_clear(&s[i2]); rustsecp256k1_v0_11_scalar_clear(&z[i2]); }
+        free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
+        return 0;
+    }
+
+    num_terms = 2 * n;
+    if (num_terms >= ECMULT_PIPPENGER_THRESHOLD) {
+        int bucket_window = rustsecp256k1_v0_11_pippenger_bucket_window(num_terms);
+        scratch_size = rustsecp256k1_v0_11_pippenger_scratch_size(num_terms * 2, bucket_window);
+    } else {
+        scratch_size = rustsecp256k1_v0_11_strauss_scratch_size(num_terms) + STRAUSS_SCRATCH_OBJECTS * 16;
+    }
+    scratch = rustsecp256k1_v0_11_scratch_create(&default_error_callback, scratch_size);
+    if (!scratch) {
+        for (i = 0; i < n; i++) { rustsecp256k1_v0_11_scalar_clear(&r[i]); rustsecp256k1_v0_11_scalar_clear(&s[i]); rustsecp256k1_v0_11_scalar_clear(&z[i]); }
+        free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
+        return 0;
+    }
+
+    rustsecp256k1_v0_11_scalar_set_int(&combined_z, 0);
+    rustsecp256k1_v0_11_scalar_set_b32(&seed_scalar, seed, &overflow);
+    a = seed_scalar; rustsecp256k1_v0_11_scalar_mul(&a, &a, &multiplier);
+    for (i = 0; i < n; i++) {
+        rustsecp256k1_v0_11_scalar tmp;
+        rustsecp256k1_v0_11_scalar_mul(&tmp, &z[i], &a); rustsecp256k1_v0_11_scalar_add(&combined_z, &combined_z, &tmp);
+        rustsecp256k1_v0_11_scalar_mul(&r_comb[i], &r[i], &a);
+        rustsecp256k1_v0_11_scalar_negate(&tmp, &s[i]); rustsecp256k1_v0_11_scalar_mul(&s_comb[i], &tmp, &a);
+        if (i + 1 < n) rustsecp256k1_v0_11_scalar_mul(&a, &a, &multiplier);
+    }
+
+    cbd.r_combined = r_comb; cbd.s_combined = s_comb; cbd.Q_points = Q; cbd.R_points = R; cbd.num_entries = n;
+    ret = rustsecp256k1_v0_11_ecmult_multi_var(&default_error_callback, scratch, &outj, &combined_z, rustsecp256k1_v0_11_batch_ecmult_callback, &cbd, num_terms);
+    ok = (ret && rustsecp256k1_v0_11_gej_is_infinity(&outj)) ? 1 : 0;
+
+    rustsecp256k1_v0_11_scalar_clear(&combined_z); rustsecp256k1_v0_11_scalar_clear(&seed_scalar); rustsecp256k1_v0_11_scalar_clear(&a);
+    for (i = 0; i < n; i++) { rustsecp256k1_v0_11_scalar_clear(&r[i]); rustsecp256k1_v0_11_scalar_clear(&s[i]); rustsecp256k1_v0_11_scalar_clear(&z[i]); rustsecp256k1_v0_11_scalar_clear(&r_comb[i]); rustsecp256k1_v0_11_scalar_clear(&s_comb[i]); }
+    rustsecp256k1_v0_11_scratch_destroy(&default_error_callback, scratch);
+    free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
+    return ok;
+}
+
+SECP256K1_API int rustsecp256k1_v0_11_verify_in_batch_rdat(
+    const rustsecp256k1_v0_11_context* ctx,
+    const unsigned char* in,
+    size_t in_size,
+    const unsigned char* multiplier32
+) {
+    size_t n;
+    size_t need;
+    const rustsecp256k1_v0_11_batch_entry* entries;
+    if (!in || in_size < 16) return 0;
+    if (in[0] != 'R' || in[1] != 'D' || in[2] != 'A' || in[3] != 'T') return 0;
+    if (!(in[4] == 0x00 && in[5] == 0x00 && in[6] == 0x00 && in[7] == 0x01)) return 0;
+    n = ((size_t)in[8] << 56) | ((size_t)in[9] << 48) | ((size_t)in[10] << 40) | ((size_t)in[11] << 32) |
+        ((size_t)in[12] << 24) | ((size_t)in[13] << 16) | ((size_t)in[14] << 8) | (size_t)in[15];
+    need = (size_t)16 + n * (size_t)227;
+    if (in_size < need) return 0;
+    entries = (const rustsecp256k1_v0_11_batch_entry*)(in + 16);
+    return rustsecp256k1_v0_11_verify_in_batch(ctx, entries, n, multiplier32);
+}
+

@@ -1,0 +1,16 @@
+@@
+@@
+@@
+/* Append exported wrappers for internal helpers at end of secp256k1.c */
+@@
+@@
+@@
+SECP256K1_API int secp256k1_scalar_is_zero_from32(const unsigned char *a32) {
+    secp256k1_scalar a;
+    int overflow = 0;
+    secp256k1_scalar_set_b32(&a, a32, &overflow);
+    if (overflow) return 0;
+    return secp256k1_scalar_is_zero(&a);
+}
+
+

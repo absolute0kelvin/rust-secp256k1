@@ -14,7 +14,7 @@ rust-version = "1.63.0"
 exclude = ["tests", "contrib"]
 
 [features]
-default = ["std"]
+default = ["std", "recovery"]
 std = ["alloc", "secp256k1-sys/std", "rand?/std", "rand?/std_rng", "rand?/thread_rng"]
 # allow use of Secp256k1::new and related API that requires an allocator
 alloc = ["secp256k1-sys/alloc"]
