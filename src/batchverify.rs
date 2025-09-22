@@ -113,7 +113,7 @@ pub fn verify_in_batch_rdat<C: Verification>(
     multiplier32: &[u8; 32],
 ) -> bool {
     unsafe {
-        let ok = ffi::rustsecp256k1_v0_11_verify_in_batch_rdat(
+        let ok = ffi::rustsecp256k1_v0_10_0_verify_in_batch_rdat(
             secp.ctx().as_ptr(),
             rdat.as_ptr(),
             rdat.len(),

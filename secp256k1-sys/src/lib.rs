@@ -776,15 +776,15 @@ extern "C" {
     // Custom internal wrapper exported via depend/my_internal_wrappers.c.patch
     #[cfg_attr(
         not(rust_secp_no_symbol_renaming),
-        link_name = "rustsecp256k1_v0_11_scalar_is_zero_from32"
+        link_name = "rustsecp256k1_v0_10_0_scalar_is_zero_from32"
     )]
     pub fn secp256k1_scalar_is_zero_from32(ctx: *const Context, a32: *const c_uchar) -> c_int;
 
     #[cfg_attr(
         not(rust_secp_no_symbol_renaming),
-        link_name = "rustsecp256k1_v0_11_verify_in_batch_rdat"
+        link_name = "rustsecp256k1_v0_10_0_verify_in_batch_rdat"
     )]
-    pub fn rustsecp256k1_v0_11_verify_in_batch_rdat(
+    pub fn rustsecp256k1_v0_10_0_verify_in_batch_rdat(
         ctx: *const Context,
         entries: *const c_uchar,
         n: size_t,
