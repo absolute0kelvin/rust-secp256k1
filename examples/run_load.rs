@@ -9,7 +9,7 @@ use secp256k1::batchverify::{
     secp256k1_lookup_ecrecover_i, verify_in_batch_rdat, ENTRY_SIZE, OFF_Q65, OFF_R32, OFF_R65,
     OFF_S32, OFF_V, OFF_Z32,
 };
-use secp256k1::rand::{rng, RngCore};
+use secp256k1::rand::{thread_rng, RngCore};
 use secp256k1::Secp256k1;
 
 fn run_load(path: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -29,7 +29,7 @@ fn run_load(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Verify batch using bound C verify_in_batch_rdat
     let secp = Secp256k1::new();
     let mut multiplier32 = [0u8; 32];
-    rng().fill_bytes(&mut multiplier32);
+    thread_rng().fill_bytes(&mut multiplier32);
     let ok = verify_in_batch_rdat(&secp, &buf[..need], &multiplier32);
     println!("verify_in_batch (from file): {} n={}", if ok { "success" } else { "failure" }, n);
 

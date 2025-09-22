@@ -7,11 +7,11 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
-use rand::{rng, RngCore};
+use rand::{thread_rng, RngCore};
 use secp256k1::batchverify::{build_r65_from_r_v, BatchEntry};
 use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
 use secp256k1::PublicKey;
-use secp256k1::{Message, SecretKey};
+use secp256k1::{Message, Secp256k1, SecretKey};
 
 #[derive(Clone, Copy)]
 struct EntryAliasForDocsOnly;
@@ -34,28 +34,29 @@ fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
 
 fn run_dump(n: usize, dump_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut entries: Vec<BatchEntry> = Vec::with_capacity(n);
+    let secp = Secp256k1::new();
 
     for _ in 0..n {
         // Random valid secret key: sample until within curve order
         let sk = loop {
             let mut buf = [0u8; 32];
-            rng().fill_bytes(&mut buf);
-            if let Ok(sk) = SecretKey::from_secret_bytes(buf) {
+            thread_rng().fill_bytes(&mut buf);
+            if let Ok(sk) = SecretKey::from_byte_array(&buf) {
                 break sk;
             }
         };
 
         // Random message
         let mut msg32 = [0u8; 32];
-        rng().fill_bytes(&mut msg32);
+        thread_rng().fill_bytes(&mut msg32);
         let msg = Message::from_digest(msg32);
 
         // Public key
-        let pk = PublicKey::from_secret_key(&sk);
+        let pk = PublicKey::from_secret_key(&secp, &sk);
         let q65 = pk.serialize_uncompressed();
 
         // Recoverable signature
-        let sigr = RecoverableSignature::sign_ecdsa_recoverable(msg, &sk);
+        let sigr = secp.sign_ecdsa_recoverable(&msg, &sk);
         let (recid, sig64) = sigr.serialize_compact();
         let v = match recid {
             RecoveryId::Zero | RecoveryId::Two => 0,
