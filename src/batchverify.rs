@@ -44,23 +44,6 @@ pub fn build_r65_from_r_v(r32: [u8; 32], v: u8) -> Result<[u8; 65], Error> {
     Ok(serialize_uncompressed(&r))
 }
 
-#[cfg(feature = "recovery")]
-fn recover_q65_from_rs_v_z(
-    r32: [u8; 32],
-    s32: [u8; 32],
-    v: u8,
-    z32: [u8; 32],
-) -> Result<[u8; 65], Error> {
-    let mut sig64 = [0u8; 64];
-    sig64[..32].copy_from_slice(&r32);
-    sig64[32..].copy_from_slice(&s32);
-    let rec = RecoveryId::from_u8_masked(v);
-    let sigr = RecoverableSignature::from_compact(&sig64, rec)?;
-    let msg = crate::Message::from_digest(z32);
-    let pk = sigr.recover_ecdsa(msg)?;
-    Ok(serialize_uncompressed(&pk))
-}
-
 fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
     // RDAT header: 'R''D''A''T' + version 0x00000001 + big-endian u64 count
     let mut out = Vec::with_capacity(16 + entries.len() * 227);
@@ -82,8 +65,28 @@ pub struct Row {
 }
 
 /// Build an RDAT buffer from parsed rows (no std required).
-#[cfg(all(feature = "alloc", feature = "recovery"))]
+#[cfg(all(feature = "recovery", feature = "global-context"))]
 pub fn generate_rdat_from_rows(rows: &[Row]) -> Result<Vec<u8>, Error> {
+    fn recover_q65_from_rs_v_z(
+        r32: [u8; 32],
+        s32: [u8; 32],
+        v: u8,
+        z32: [u8; 32],
+    ) -> Result<[u8; 65], Error> {
+        let mut sig64 = [0u8; 64];
+        sig64[..32].copy_from_slice(&r32);
+        sig64[32..].copy_from_slice(&s32);
+        let rec = match v {
+            0 => RecoveryId::Zero,
+            1 => RecoveryId::One,
+            _ => return Err(Error::InvalidSignature),
+        };
+        let sigr = RecoverableSignature::from_compact(&sig64, rec)?;
+        let msg = crate::Message::from_digest(z32);
+        let pk = crate::SECP256K1.recover_ecdsa(&msg, &sigr).unwrap();
+        Ok(serialize_uncompressed(&pk))
+    }
+
     let mut entries: Vec<BatchEntry> = Vec::with_capacity(rows.len());
     for r in rows.iter() {
         let r65 = build_r65_from_r_v(r.r32, r.v)?;
@@ -94,7 +97,7 @@ pub fn generate_rdat_from_rows(rows: &[Row]) -> Result<Vec<u8>, Error> {
 }
 
 /// Convenience: write RDAT to a file (requires std).
-#[cfg(all(feature = "std", feature = "recovery"))]
+#[cfg(all(feature = "std", feature = "recovery", feature = "global-context"))]
 pub fn write_rdat_file<P: AsRef<Path>>(rows: &[Row], out_path: P) -> Result<(), Error> {
     let rdat = generate_rdat_from_rows(rows)?;
     let mut of = File::create(out_path).map_err(|_| Error::InvalidSignature)?;
