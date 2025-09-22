@@ -788,7 +788,19 @@ typedef struct {
     unsigned char v;           /* 0 even, 1 odd */
 } rustsecp256k1_v0_10_0_batch_entry;
 
-/* ================== Batch verification implementation ================== */
+/* Return codes for rustsecp256k1_v0_10_0_verify_in_batch */
+#define SECP256K1_BATCHVERIFY_OK                        1
+#define SECP256K1_BATCHVERIFY_ERR_INVALID_ARGS         -1
+#define SECP256K1_BATCHVERIFY_ERR_QR_PARSE_OR_INVALID  -2
+#define SECP256K1_BATCHVERIFY_ERR_V_MISMATCH           -3
+#define SECP256K1_BATCHVERIFY_ERR_R_SCALAR             -4
+#define SECP256K1_BATCHVERIFY_ERR_S_SCALAR             -5
+#define SECP256K1_BATCHVERIFY_ERR_Z_SCALAR             -6
+#define SECP256K1_BATCHVERIFY_ERR_R_BINDING            -7
+#define SECP256K1_BATCHVERIFY_ERR_ALLOC                -8
+#define SECP256K1_BATCHVERIFY_ERR_SCRATCH              -9
+#define SECP256K1_BATCHVERIFY_ERR_ECMULT               -10
+#define SECP256K1_BATCHVERIFY_ERR_NOT_INFINITY         -11
 
 typedef struct {
     const rustsecp256k1_v0_10_0_scalar *r_combined;
@@ -838,7 +850,7 @@ static void rustsecp256k1_v0_10_0_scratch_destroy(const rustsecp256k1_v0_10_0_ca
     }
 }
 
-static int rustsecp256k1_v0_10_0_verify_in_batch(
+SECP256K1_API int rustsecp256k1_v0_10_0_verify_in_batch(
     const rustsecp256k1_v0_10_0_context* ctx,
     const rustsecp256k1_v0_10_0_batch_entry* entries,
     size_t n,
@@ -857,7 +869,7 @@ static int rustsecp256k1_v0_10_0_verify_in_batch(
     size_t i2;
     size_t num_terms;
     size_t scratch_size;
-    rustsecp256k1_v0_10_0_scratch* scratch;
+    rustsecp256k1_v0_10_0_scratch *scratch;
     rustsecp256k1_v0_10_0_scalar combined_z;
     unsigned char seed[32] = {0x42};
     rustsecp256k1_v0_10_0_scalar seed_scalar;
@@ -866,8 +878,9 @@ static int rustsecp256k1_v0_10_0_verify_in_batch(
     rustsecp256k1_v0_10_0_gej outj;
     int ret;
     int ok;
+    int fail_code = 0;
     (void)ctx;
-    if (!entries || n == 0 || !multiplier32) return 0;
+    if (!entries || n == 0 || !multiplier32) return SECP256K1_BATCHVERIFY_ERR_INVALID_ARGS;
 
     rustsecp256k1_v0_10_0_scalar_set_b32(&multiplier, multiplier32, &overflow);
     if (overflow) return 0;
@@ -881,14 +894,14 @@ static int rustsecp256k1_v0_10_0_verify_in_batch(
     s_comb = (rustsecp256k1_v0_10_0_scalar*)checked_malloc(&default_error_callback, n * sizeof(*s_comb));
     if (!Q || !R || !r || !s || !z || !r_comb || !s_comb) {
         free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
-        return 0;
+        return SECP256K1_BATCHVERIFY_ERR_ALLOC;
     }
 
     for (i = 0; i < n; i++) {
-        if (!rustsecp256k1_v0_10_0_eckey_pubkey_parse(&Q[i], entries[i].Q65, 65)) { overflow = 1; break; }
-        if (!rustsecp256k1_v0_10_0_eckey_pubkey_parse(&R[i], entries[i].R65, 65)) { overflow = 1; break; }
-        if (!rustsecp256k1_v0_10_0_ge_is_valid_var(&Q[i]) || rustsecp256k1_v0_10_0_ge_is_infinity(&Q[i])) { overflow = 1; break; }
-        if (!rustsecp256k1_v0_10_0_ge_is_valid_var(&R[i]) || rustsecp256k1_v0_10_0_ge_is_infinity(&R[i])) { overflow = 1; break; }
+        if (!rustsecp256k1_v0_10_0_eckey_pubkey_parse(&Q[i], entries[i].Q65, 65)) { fail_code = SECP256K1_BATCHVERIFY_ERR_QR_PARSE_OR_INVALID; break; }
+        if (!rustsecp256k1_v0_10_0_eckey_pubkey_parse(&R[i], entries[i].R65, 65)) { fail_code = SECP256K1_BATCHVERIFY_ERR_QR_PARSE_OR_INVALID; break; }
+        if (!rustsecp256k1_v0_10_0_ge_is_valid_var(&Q[i]) || rustsecp256k1_v0_10_0_ge_is_infinity(&Q[i])) { fail_code = SECP256K1_BATCHVERIFY_ERR_QR_PARSE_OR_INVALID; break; }
+        if (!rustsecp256k1_v0_10_0_ge_is_valid_var(&R[i]) || rustsecp256k1_v0_10_0_ge_is_infinity(&R[i])) { fail_code = SECP256K1_BATCHVERIFY_ERR_QR_PARSE_OR_INVALID; break; }
         {
             unsigned char yb[32];
             int y_is_odd;
@@ -896,22 +909,22 @@ static int rustsecp256k1_v0_10_0_verify_in_batch(
             rustsecp256k1_v0_10_0_fe_normalize_var(&y);
             rustsecp256k1_v0_10_0_fe_get_b32(yb, &y);
             y_is_odd = (yb[31] & 1);
-            if ((entries[i].v ? 1 : 0) != y_is_odd) { overflow = 1; break; }
+            if ((entries[i].v ? 1 : 0) != y_is_odd) { fail_code = SECP256K1_BATCHVERIFY_ERR_V_MISMATCH; break; }
         }
-        rustsecp256k1_v0_10_0_scalar_set_b32(&r[i], entries[i].r32, &overflow); if (overflow || rustsecp256k1_v0_10_0_scalar_is_zero(&r[i])) { overflow = 1; break; }
-        rustsecp256k1_v0_10_0_scalar_set_b32(&s[i], entries[i].s32, &overflow); if (overflow || rustsecp256k1_v0_10_0_scalar_is_zero(&s[i]) || rustsecp256k1_v0_10_0_scalar_is_high(&s[i])) { overflow = 1; break; }
-        rustsecp256k1_v0_10_0_scalar_set_b32(&z[i], entries[i].z32, &overflow); if (overflow) { overflow = 1; break; }
+        rustsecp256k1_v0_10_0_scalar_set_b32(&r[i], entries[i].r32, &overflow); if (overflow || rustsecp256k1_v0_10_0_scalar_is_zero(&r[i])) { fail_code = SECP256K1_BATCHVERIFY_ERR_R_SCALAR; break; }
+        rustsecp256k1_v0_10_0_scalar_set_b32(&s[i], entries[i].s32, &overflow); if (overflow || rustsecp256k1_v0_10_0_scalar_is_zero(&s[i]) || rustsecp256k1_v0_10_0_scalar_is_high(&s[i])) { fail_code = SECP256K1_BATCHVERIFY_ERR_S_SCALAR; break; }
+        rustsecp256k1_v0_10_0_scalar_set_b32(&z[i], entries[i].z32, &overflow); if (overflow) { fail_code = SECP256K1_BATCHVERIFY_ERR_Z_SCALAR; break; }
         {
             rustsecp256k1_v0_10_0_fe x; unsigned char xb[32]; rustsecp256k1_v0_10_0_scalar r_from_R; int of2 = 0;
             x = R[i].x;
             rustsecp256k1_v0_10_0_fe_normalize_var(&x); rustsecp256k1_v0_10_0_fe_get_b32(xb, &x); rustsecp256k1_v0_10_0_scalar_set_b32(&r_from_R, xb, &of2);
-            if (!rustsecp256k1_v0_10_0_scalar_eq(&r_from_R, &r[i])) { overflow = 1; break; }
+            if (!rustsecp256k1_v0_10_0_scalar_eq(&r_from_R, &r[i])) { fail_code = SECP256K1_BATCHVERIFY_ERR_R_BINDING; break; }
         }
     }
-    if (overflow) {
+    if (fail_code) {
         for (i2 = 0; i2 < n; i2++) { rustsecp256k1_v0_10_0_scalar_clear(&r[i2]); rustsecp256k1_v0_10_0_scalar_clear(&s[i2]); rustsecp256k1_v0_10_0_scalar_clear(&z[i2]); }
         free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
-        return 0;
+        return fail_code;
     }
 
     num_terms = 2 * n;
@@ -925,7 +938,7 @@ static int rustsecp256k1_v0_10_0_verify_in_batch(
     if (!scratch) {
         for (i = 0; i < n; i++) { rustsecp256k1_v0_10_0_scalar_clear(&r[i]); rustsecp256k1_v0_10_0_scalar_clear(&s[i]); rustsecp256k1_v0_10_0_scalar_clear(&z[i]); }
         free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
-        return 0;
+        return SECP256K1_BATCHVERIFY_ERR_SCRATCH;
     }
 
     rustsecp256k1_v0_10_0_scalar_set_int(&combined_z, 0);
@@ -947,7 +960,13 @@ static int rustsecp256k1_v0_10_0_verify_in_batch(
     for (i = 0; i < n; i++) { rustsecp256k1_v0_10_0_scalar_clear(&r[i]); rustsecp256k1_v0_10_0_scalar_clear(&s[i]); rustsecp256k1_v0_10_0_scalar_clear(&z[i]); rustsecp256k1_v0_10_0_scalar_clear(&r_comb[i]); rustsecp256k1_v0_10_0_scalar_clear(&s_comb[i]); }
     rustsecp256k1_v0_10_0_scratch_destroy(&default_error_callback, scratch);
     free(Q); free(R); free(r); free(s); free(z); free(r_comb); free(s_comb);
-    return ok;
+    if (ret == 0) {
+        return SECP256K1_BATCHVERIFY_ERR_ECMULT;
+    }
+    if (!ok) {
+        return SECP256K1_BATCHVERIFY_ERR_NOT_INFINITY;
+    }
+    return SECP256K1_BATCHVERIFY_OK;
 }
 
 SECP256K1_API int rustsecp256k1_v0_10_0_verify_in_batch_rdat(

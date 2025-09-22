@@ -30,8 +30,8 @@ fn run_load(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let secp = Secp256k1::new();
     let mut multiplier32 = [0u8; 32];
     thread_rng().fill_bytes(&mut multiplier32);
-    let ok = verify_in_batch_rdat(&secp, &buf[..need], &multiplier32);
-    println!("verify_in_batch (from file): {} n={}", if ok { "success" } else { "failure" }, n);
+    let res = verify_in_batch_rdat(&secp, &buf[..need], &multiplier32);
+    println!("verify_in_batch (from file): {} n={}", if res == 1 { "success" } else { "failure" }, n);
 
     // Sample lookup using first entry
     if n > 0 {

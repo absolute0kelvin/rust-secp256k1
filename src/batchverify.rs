@@ -112,15 +112,14 @@ pub fn verify_in_batch_rdat<C: Verification>(
     secp: &Secp256k1<C>,
     rdat: &[u8],
     multiplier32: &[u8; 32],
-) -> bool {
+) -> i32 {
     unsafe {
-        let ok = ffi::rustsecp256k1_v0_10_0_verify_in_batch_rdat(
+        ffi::rustsecp256k1_v0_10_0_verify_in_batch_rdat(
             secp.ctx().as_ptr(),
             rdat.as_ptr(),
             rdat.len(),
             multiplier32.as_ptr(),
-        );
-        ok == 1
+        )
     }
 }
 
@@ -199,6 +198,6 @@ fn test_batch_verify() {
     };
     let rdat = generate_rdat_from_rows(&vec![row]).unwrap();
 
-    let ok = verify_in_batch_rdat(&SECP256K1, &rdat[..], &[2; 32]);
-    assert!(ok);
+    let res = verify_in_batch_rdat(&SECP256K1, &rdat[..], &[2; 32]);
+    assert_eq!(1, res);
 }
