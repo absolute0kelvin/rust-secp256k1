@@ -162,6 +162,7 @@ mod secret;
 mod context;
 mod key;
 
+pub mod batchverify;
 pub mod constants;
 pub mod ecdh;
 pub mod ecdsa;
@@ -237,7 +238,9 @@ impl Message {
     ///
     /// [secure signature]: https://twitter.com/pwuille/status/1063582706288586752
     #[inline]
-    pub fn from_digest(digest: [u8; 32]) -> Message { Message(digest) }
+    pub fn from_digest(digest: [u8; 32]) -> Message {
+        Message(digest)
+    }
 
     /// Creates a [`Message`] from a 32 byte slice `digest`.
     ///
@@ -264,7 +267,9 @@ impl Message {
 #[allow(deprecated)]
 impl<T: ThirtyTwoByteHash> From<T> for Message {
     /// Converts a 32-byte hash directly to a message without error paths.
-    fn from(t: T) -> Message { Message(t.into_32()) }
+    fn from(t: T) -> Message {
+        Message(t.into_32())
+    }
 }
 
 impl fmt::LowerHex for Message {
@@ -277,7 +282,9 @@ impl fmt::LowerHex for Message {
 }
 
 impl fmt::Display for Message {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::LowerHex::fmt(self, f) }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::LowerHex::fmt(self, f)
+    }
 }
 
 /// The main error type for this library.
@@ -364,7 +371,9 @@ unsafe impl<C: Context> Send for Secp256k1<C> {}
 unsafe impl<C: Context> Sync for Secp256k1<C> {}
 
 impl<C: Context> PartialEq for Secp256k1<C> {
-    fn eq(&self, _other: &Secp256k1<C>) -> bool { true }
+    fn eq(&self, _other: &Secp256k1<C>) -> bool {
+        true
+    }
 }
 
 impl<C: Context> Eq for Secp256k1<C> {}
@@ -391,7 +400,9 @@ impl<C: Context> Secp256k1<C> {
     /// shouldn't be needed with normal usage of the library. It enables
     /// extending the Secp256k1 with more cryptographic algorithms outside of
     /// this crate.
-    pub fn ctx(&self) -> NonNull<ffi::Context> { self.ctx }
+    pub fn ctx(&self) -> NonNull<ffi::Context> {
+        self.ctx
+    }
 
     /// Returns the required memory for a preallocated context buffer in a generic manner(sign/verify/all).
     pub fn preallocate_size_gen() -> usize {

@@ -101,6 +101,7 @@ patch "$DIR/src/util.h" "./util.h.patch"
 
 # Fix a linking error while cross-compiling to windowns with mingw
 patch "$DIR/contrib/lax_der_parsing.c" "./lax_der_parsing.c.patch"
+patch "$DIR/src/secp256k1.c" "./my_internal_wrappers.c.patch"
 
 # Prefix all methods with rustsecp and a version prefix
 find "$DIR" \
