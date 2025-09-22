@@ -10,7 +10,7 @@ use std::{fs::File, io::Write, path::Path};
 
 /// A single batch entry matching the C layout (all big-endian encodings)
 /// Q65, R65 are uncompressed SEC1 encodings; r32, s32, z32 are 32-byte big-endian scalars; v is 0/1.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct BatchEntry {
     pub q65: [u8; 65],
@@ -57,6 +57,7 @@ fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
     out
 }
 
+#[derive(Debug)]
 pub struct Row {
     pub z32: [u8; 32],
     pub r32: [u8; 32],
@@ -176,4 +177,28 @@ pub fn secp256k1_lookup_ecrecover_i(
     let mut out = [0u8; 65];
     out.copy_from_slice(q65);
     Some(out)
+}
+
+#[cfg(all(feature = "recovery", feature = "global-context"))]
+#[test]
+fn test_batch_verify() {
+    use crate::SECP256K1;
+
+    let message_hash = [0u8; 32];
+    let row = Row {
+        z32: message_hash,
+        r32: [
+            132, 12, 252, 87, 40, 69, 245, 120, 110, 112, 41, 132, 194, 165, 130, 82, 140, 173, 75,
+            73, 178, 161, 11, 157, 177, 190, 127, 202, 144, 5, 133, 101,
+        ],
+        s32: [
+            37, 231, 16, 156, 235, 152, 22, 141, 149, 176, 155, 24, 187, 246, 182, 133, 19, 14, 5,
+            98, 242, 51, 135, 125, 73, 43, 148, 238, 224, 197, 182, 209,
+        ],
+        v: 0,
+    };
+    let rdat = generate_rdat_from_rows(&vec![row]).unwrap();
+
+    let ok = verify_in_batch_rdat(&SECP256K1, &rdat[..], &[2; 32]);
+    assert!(ok);
 }
