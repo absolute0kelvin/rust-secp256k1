@@ -12,6 +12,7 @@
 extern crate cc;
 
 use std::env;
+use std::path::Path;
 
 fn main() {
     // Actual build
@@ -53,6 +54,17 @@ fn main() {
                .file("depend/secp256k1/src/precomputed_ecmult_gen.c")
                .file("depend/secp256k1/src/precomputed_ecmult.c")
                .file("depend/secp256k1/src/secp256k1.c");
+
+    // Optional: link a C allocator (dlmalloc) and remap malloc family if vendored
+    let dlmalloc_path = Path::new("depend/dlmalloc/dlmalloc.c");
+    if dlmalloc_path.exists() {
+        base_config
+            .define("malloc", Some("dlmalloc"))
+            .define("free", Some("dlfree"))
+            .define("realloc", Some("dlrealloc"))
+            .define("calloc", Some("dlcalloc"))
+            .file(dlmalloc_path);
+    }
 
     if base_config.try_compile("libsecp256k1.a").is_err() {
         // Some embedded platforms may not have, eg, string.h available, so if the build fails
