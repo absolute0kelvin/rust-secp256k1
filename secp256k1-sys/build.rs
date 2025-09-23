@@ -58,12 +58,12 @@ fn main() {
     // Optional: link a C allocator (dlmalloc) and remap malloc family if vendored
     let dlmalloc_path = Path::new("depend/dlmalloc/dlmalloc.c");
     if dlmalloc_path.exists() {
-        base_config
-            .define("malloc", Some("dlmalloc"))
-            .define("free", Some("dlfree"))
-            .define("realloc", Some("dlrealloc"))
-            .define("calloc", Some("dlcalloc"))
-            .file(dlmalloc_path);
+        // Build dlmalloc and force-include a header that remaps malloc family
+        base_config.file(dlmalloc_path);
+        base_config.flag_if_supported("-include");
+        base_config.flag_if_supported("depend/alloc_remap.h");
+        // MSVC equivalent of forced include
+        base_config.flag_if_supported("/FIdepend/alloc_remap.h");
     }
 
     if base_config.try_compile("libsecp256k1.a").is_err() {
