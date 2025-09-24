@@ -461,6 +461,7 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #define LACKS_UNISTD_H
 #define LACKS_SCHED_H
 #define HAVE_MMAP 0
+#define LACKS_SYS_PARAM_H
 
 /* Version identifier to allow people to support multiple versions */
 #ifndef DLMALLOC_VERSION
