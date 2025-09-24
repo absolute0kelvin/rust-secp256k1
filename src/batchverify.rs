@@ -114,7 +114,7 @@ pub fn verify_in_batch_rdat<C: Verification>(
     multiplier32: &[u8; 32],
 ) -> i32 {
     unsafe {
-        ffi::rustsecp256k1_v0_10_0_verify_in_batch_rdat(
+        ffi::batchverify_rustsecp256k1_v0_10_0_verify_in_batch_rdat(
             secp.ctx().as_ptr(),
             rdat.as_ptr(),
             rdat.len(),

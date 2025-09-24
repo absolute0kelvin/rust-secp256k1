@@ -13,10 +13,10 @@
 /**
  * Multiply: R = q*A (in constant-time for q)
  */
-static void rustsecp256k1_v0_10_0_ecmult_const(rustsecp256k1_v0_10_0_gej *r, const rustsecp256k1_v0_10_0_ge *a, const rustsecp256k1_v0_10_0_scalar *q);
+static void batchverify_rustsecp256k1_v0_10_0_ecmult_const(batchverify_rustsecp256k1_v0_10_0_gej *r, const batchverify_rustsecp256k1_v0_10_0_ge *a, const batchverify_rustsecp256k1_v0_10_0_scalar *q);
 
 /**
- * Same as rustsecp256k1_v0_10_0_ecmult_const, but takes in an x coordinate of the base point
+ * Same as batchverify_rustsecp256k1_v0_10_0_ecmult_const, but takes in an x coordinate of the base point
  * only, specified as fraction n/d (numerator/denominator). Only the x coordinate of the result is
  * returned.
  *
@@ -27,11 +27,11 @@ static void rustsecp256k1_v0_10_0_ecmult_const(rustsecp256k1_v0_10_0_gej *r, con
  *
  * Constant time in the value of q, but not any other inputs.
  */
-static int rustsecp256k1_v0_10_0_ecmult_const_xonly(
-    rustsecp256k1_v0_10_0_fe *r,
-    const rustsecp256k1_v0_10_0_fe *n,
-    const rustsecp256k1_v0_10_0_fe *d,
-    const rustsecp256k1_v0_10_0_scalar *q,
+static int batchverify_rustsecp256k1_v0_10_0_ecmult_const_xonly(
+    batchverify_rustsecp256k1_v0_10_0_fe *r,
+    const batchverify_rustsecp256k1_v0_10_0_fe *n,
+    const batchverify_rustsecp256k1_v0_10_0_fe *d,
+    const batchverify_rustsecp256k1_v0_10_0_scalar *q,
     int known_on_curve
 );
 

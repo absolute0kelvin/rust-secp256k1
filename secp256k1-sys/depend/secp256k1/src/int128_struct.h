@@ -7,8 +7,8 @@
 typedef struct {
   uint64_t lo;
   uint64_t hi;
-} rustsecp256k1_v0_10_0_uint128;
+} batchverify_rustsecp256k1_v0_10_0_uint128;
 
-typedef rustsecp256k1_v0_10_0_uint128 rustsecp256k1_v0_10_0_int128;
+typedef batchverify_rustsecp256k1_v0_10_0_uint128 batchverify_rustsecp256k1_v0_10_0_int128;
 
 #endif
