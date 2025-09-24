@@ -573,7 +573,7 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #endif  /* linux */
 #endif  /* HAVE_MREMAP */
 #ifndef MALLOC_FAILURE_ACTION
-#define MALLOC_FAILURE_ACTION  errno = ENOMEM;
+#define MALLOC_FAILURE_ACTION  
 #endif  /* MALLOC_FAILURE_ACTION */
 #ifndef HAVE_MORECORE
 #if ONLY_MSPACES
@@ -1251,10 +1251,10 @@ DLMALLOC_EXPORT int mspace_mallopt(int, int);
 #pragma warning( disable : 4146 ) /* no "unsigned" warnings */
 #endif /* _MSC_VER */
 #if !NO_MALLOC_STATS
-#include <stdio.h>       /* for printing in malloc_stats */
+//#include <stdio.h>       /* for printing in malloc_stats */
 #endif /* NO_MALLOC_STATS */
 #ifndef LACKS_ERRNO_H
-#include <errno.h>       /* for MALLOC_FAILURE_ACTION */
+//#include <errno.h>       /* for MALLOC_FAILURE_ACTION */
 #endif /* LACKS_ERRNO_H */
 #ifdef DEBUG
 #if ABORT_ON_ASSERT_FAILURE
@@ -4703,7 +4703,7 @@ int dlposix_memalign(void** pp, size_t alignment, size_t bytes) {
     size_t d = alignment / sizeof(void*);
     size_t r = alignment % sizeof(void*);
     if (r != 0 || d == 0 || (d & (d-SIZE_T_ONE)) != 0)
-      return EINVAL;
+      return 22; //EINVAL;
     else if (bytes <= MAX_REQUEST - alignment) {
       if (alignment <  MIN_CHUNK_SIZE)
         alignment = MIN_CHUNK_SIZE;
@@ -4711,7 +4711,7 @@ int dlposix_memalign(void** pp, size_t alignment, size_t bytes) {
     }
   }
   if (mem == 0)
-    return ENOMEM;
+    return 12; //ENOMEM;
   else {
     *pp = mem;
     return 0;
