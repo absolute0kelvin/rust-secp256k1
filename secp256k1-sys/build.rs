@@ -56,16 +56,7 @@ fn main() {
         .file("depend/secp256k1/src/precomputed_ecmult.c")
         .file("depend/secp256k1/src/secp256k1.c");
 
-    // Optional: link a C allocator (dlmalloc) and remap malloc family if vendored
-    let dlmalloc_path = Path::new("depend/dlmalloc/dlmalloc.c");
-    if dlmalloc_path.exists() {
-        // Build dlmalloc and force-include a header that remaps malloc family
-        base_config.file(dlmalloc_path);
-        base_config.flag_if_supported("-include");
-        base_config.flag_if_supported("depend/alloc_remap.h");
-        // MSVC equivalent of forced include
-        base_config.flag_if_supported("/FIdepend/alloc_remap.h");
-    }
+    base_config.flag_if_supported("depend/alloc_remap.h");
 
     if base_config.try_compile("libsecp256k1.a").is_err() {
         // Some embedded platforms may not have, eg, string.h available, so if the build fails
