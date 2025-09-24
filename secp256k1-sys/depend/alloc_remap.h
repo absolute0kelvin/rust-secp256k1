@@ -7,6 +7,11 @@
 #define realloc dlrealloc
 #define calloc  dlcalloc
 
+#include <stddef.h>
+void* dlmalloc(size_t size);
+void dlfree(void* ptr);
+void* dlcalloc(size_t nmemb, size_t size);
+void* dlrealloc(void* ptr, size_t size);
 #endif /* SECP_ALLOC_REMAP_H */
 
 

@@ -9,7 +9,7 @@
 
 #include "../include/secp256k1.h"
 
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
 
@@ -55,12 +55,12 @@ static SECP256K1_INLINE void batchverify_rustsecp256k1_v0_10_0_callback_call(con
 #ifndef USE_EXTERNAL_DEFAULT_CALLBACKS
 static void batchverify_rustsecp256k1_v0_10_0_default_illegal_callback_fn(const char* str, void* data) {
     (void)data;
-    fprintf(stderr, "[libsecp256k1] illegal argument: %s\n", str);
+    //fprintf(stderr, "[libsecp256k1] illegal argument: %s\n", str);
     abort();
 }
 static void batchverify_rustsecp256k1_v0_10_0_default_error_callback_fn(const char* str, void* data) {
     (void)data;
-    fprintf(stderr, "[libsecp256k1] internal consistency check failed: %s\n", str);
+    //fprintf(stderr, "[libsecp256k1] internal consistency check failed: %s\n", str);
     abort();
 }
 #else
@@ -81,12 +81,10 @@ static const batchverify_rustsecp256k1_v0_10_0_callback default_error_callback =
 
 #ifdef DETERMINISTIC
 #define TEST_FAILURE(msg) do { \
-    fprintf(stderr, "%s\n", msg); \
     abort(); \
 } while(0);
 #else
 #define TEST_FAILURE(msg) do { \
-    fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, msg); \
     abort(); \
 } while(0)
 #endif

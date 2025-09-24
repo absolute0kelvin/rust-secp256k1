@@ -51,11 +51,17 @@ fn main() {
 
     // secp256k1
     base_config
+        .file("depend/dlmalloc/dlmalloc.c")
         .file("depend/secp256k1/src/precomputed_ecmult_gen.c")
         .file("depend/secp256k1/src/precomputed_ecmult.c")
         .file("depend/secp256k1/src/secp256k1.c");
 
-    base_config.flag_if_supported("depend/alloc_remap.h");
+    // Force include of alloc remap to redirect malloc family to dlmalloc (GCC/Clang)
+    #[cfg(not(target_env = "msvc"))]
+    {
+        base_config.flag("-include");
+        base_config.flag("depend/alloc_remap.h");
+    }
 
     if base_config.try_compile("libsecp256k1.a").is_err() {
         // Some embedded platforms may not have, eg, string.h available, so if the build fails
