@@ -7,11 +7,11 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
+use batchverify_secp256k1::batchverify::{build_r65_from_r_v, BatchEntry};
+use batchverify_secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
+use batchverify_secp256k1::PublicKey;
+use batchverify_secp256k1::{Message, Secp256k1, SecretKey};
 use rand::{thread_rng, RngCore};
-use secp256k1::batchverify::{build_r65_from_r_v, BatchEntry};
-use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
-use secp256k1::PublicKey;
-use secp256k1::{Message, Secp256k1, SecretKey};
 
 #[derive(Clone, Copy)]
 struct EntryAliasForDocsOnly;

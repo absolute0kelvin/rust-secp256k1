@@ -22,7 +22,7 @@ pub struct BatchEntry {
 }
 
 impl BatchEntry {
-    fn write_into(&self, out: &mut Vec<u8>) {
+    pub fn write_into(&self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.q65);
         out.extend_from_slice(&self.r65);
         out.extend_from_slice(&self.r32);
@@ -44,7 +44,7 @@ pub fn build_r65_from_r_v(r32: [u8; 32], v: u8) -> Result<[u8; 65], Error> {
     Ok(serialize_uncompressed(&r))
 }
 
-fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
+pub fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
     // RDAT header: 'R''D''A''T' + version 0x00000001 + big-endian u64 count
     let mut out = Vec::with_capacity(16 + entries.len() * 227);
     out.extend_from_slice(b"RDAT");
@@ -57,7 +57,7 @@ fn rdat_serialize(entries: &[BatchEntry]) -> Vec<u8> {
     out
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Row {
     pub z32: [u8; 32],
     pub r32: [u8; 32],
@@ -196,8 +196,10 @@ fn test_batch_verify() {
         ],
         v: 0,
     };
-    let rdat = generate_rdat_from_rows(&vec![row]).unwrap();
+    let rdat = generate_rdat_from_rows(&vec![row.clone()]).unwrap();
 
     let res = verify_in_batch_rdat(&SECP256K1, &rdat[..], &[2; 32]);
     assert_eq!(1, res);
+
+    secp256k1_lookup_ecrecover_i(&rdat[16..], 1, 0, &row.r32, &row.s32, row.v, &row.z32).unwrap();
 }
