@@ -100,7 +100,6 @@ patch "$DIR/src/scratch_impl.h" "./scratch_impl.h.patch"
 patch "$DIR/src/util.h" "./util.h.patch"
 
 # Fix a linking error while cross-compiling to windowns with mingw
-patch "$DIR/contrib/lax_der_parsing.c" "./lax_der_parsing.c.patch"
 patch "$DIR/src/secp256k1.c" "./my_internal_wrappers.c.patch"
 
 # Prefix all methods with rustsecp and a version prefix
@@ -110,10 +109,7 @@ find "$DIR" \
     -type f \
     -print0 | xargs -0 sed -i "/^#include/! s/secp256k1_/rustsecp256k1_v${SECP_VENDOR_VERSION_CODE}_/g"
 # special rule for a method that is not prefixed in libsecp
-find "$DIR" \
-    -not -path '*/\.*' \
-    -type f \
-    -print0 | xargs -0 sed -i "/^#include/! s/ecdsa_signature_parse_der_lax/rustsecp256k1_v${SECP_VENDOR_VERSION_CODE}_ecdsa_signature_parse_der_lax/g"
+
 
 cd "$SECP_SYS"
 # Update the `links = ` in the manifest file.

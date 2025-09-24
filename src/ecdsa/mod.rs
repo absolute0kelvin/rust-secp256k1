@@ -91,30 +91,7 @@ impl Signature {
         }
     }
 
-    /// Converts a "lax DER"-encoded byte slice to a signature. This is basically
-    /// only useful for validating signatures in the Bitcoin blockchain from before
-    /// 2016. It should never be used in new applications. This library does not
-    /// support serializing to this "format"
-    pub fn from_der_lax(data: &[u8]) -> Result<Signature, Error> {
-        if data.is_empty() {
-            return Err(Error::InvalidSignature);
-        }
-
-        unsafe {
-            let mut ret = ffi::Signature::new();
-            if ffi::ecdsa_signature_parse_der_lax(
-                ffi::secp256k1_context_no_precomp,
-                &mut ret,
-                data.as_c_ptr(),
-                data.len(),
-            ) == 1
-            {
-                Ok(Signature(ret))
-            } else {
-                Err(Error::InvalidSignature)
-            }
-        }
-    }
+    
 
     /// Normalizes a signature to a "low S" form. In ECDSA, signatures are
     /// of the form (r, s) where r and s are numbers lying in some finite

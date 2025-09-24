@@ -641,16 +641,7 @@ extern "C" {
         input64: *const c_uchar,
     ) -> c_int;
 
-    #[cfg_attr(
-        not(rust_secp_no_symbol_renaming),
-        link_name = "batchverify_rustsecp256k1_v0_10_0_ecdsa_signature_parse_der_lax"
-    )]
-    pub fn ecdsa_signature_parse_der_lax(
-        cx: *const Context,
-        sig: *mut Signature,
-        input: *const c_uchar,
-        in_len: size_t,
-    ) -> c_int;
+    
 
     #[cfg_attr(
         not(rust_secp_no_symbol_renaming),

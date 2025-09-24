@@ -1,6 +1,4 @@
-extern crate secp256k1;
-
-use secp256k1::{PublicKey, Secp256k1, SecretKey};
+use batchverify_secp256k1::{PublicKey, Secp256k1, SecretKey};
 
 fn main() {
     let secp = Secp256k1::new();
