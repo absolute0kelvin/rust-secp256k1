@@ -68,6 +68,7 @@ noinst_HEADERS += contrib/lax_der_parsing.h
 noinst_HEADERS += contrib/lax_der_parsing.c
 noinst_HEADERS += contrib/lax_der_privatekey_parsing.h
 noinst_HEADERS += contrib/lax_der_privatekey_parsing.c
+noinst_HEADERS += ./../depend/dlmalloc/dlmalloc.c
 noinst_HEADERS += examples/examples_util.h
 
 PRECOMPUTED_LIB = libbatchverify_rustsecp256k1_v0_10_0_precomputed.la
