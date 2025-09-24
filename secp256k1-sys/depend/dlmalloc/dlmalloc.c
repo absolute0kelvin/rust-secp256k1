@@ -456,6 +456,11 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #define LACKS_STRING_H
 #define LACKS_STRINGS_H
 #define LACKS_TIME_H
+#define LACKS_SYS_MMAN_H
+#define LACKS_FCNTL_H
+#define LACKS_UNISTD_H
+#define LACKS_SCHED_H
+#define HAVE_MMAP 0
 
 /* Version identifier to allow people to support multiple versions */
 #ifndef DLMALLOC_VERSION
@@ -3371,32 +3376,32 @@ static void internal_malloc_stats(mstate m) {
 */
 /* Malloc using mmap */
 static void* mmap_alloc(mstate m, size_t nb) {
-  size_t mmsize = mmap_align(nb + SIX_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
-  if (m->footprint_limit != 0) {
-    size_t fp = m->footprint + mmsize;
-    if (fp <= m->footprint || fp > m->footprint_limit)
-      return 0;
-  }
-  if (mmsize > nb) {     /* Check for wrap around 0 */
-    char* mm = (char*)(CALL_DIRECT_MMAP(mmsize));
-    if (mm != CMFAIL) {
-      size_t offset = align_offset(chunk2mem(mm));
-      size_t psize = mmsize - offset - MMAP_FOOT_PAD;
-      mchunkptr p = (mchunkptr)(mm + offset);
-      p->prev_foot = offset;
-      p->head = psize;
-      mark_inuse_foot(m, p, psize);
-      chunk_plus_offset(p, psize)->head = FENCEPOST_HEAD;
-      chunk_plus_offset(p, psize+SIZE_T_SIZE)->head = 0;
-      if (m->least_addr == 0 || mm < m->least_addr)
-        m->least_addr = mm;
-      if ((m->footprint += mmsize) > m->max_footprint)
-        m->max_footprint = m->footprint;
-      assert(is_aligned(chunk2mem(p)));
-      check_mmapped_chunk(m, p);
-      return chunk2mem(p);
-    }
-  }
+  //size_t mmsize = mmap_align(nb + SIX_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
+  //if (m->footprint_limit != 0) {
+  //  size_t fp = m->footprint + mmsize;
+  //  if (fp <= m->footprint || fp > m->footprint_limit)
+  //    return 0;
+  //}
+  //if (mmsize > nb) {     /* Check for wrap around 0 */
+  //  char* mm = (char*)(CALL_DIRECT_MMAP(mmsize));
+  //  if (mm != CMFAIL) {
+  //    size_t offset = align_offset(chunk2mem(mm));
+  //    size_t psize = mmsize - offset - MMAP_FOOT_PAD;
+  //    mchunkptr p = (mchunkptr)(mm + offset);
+  //    p->prev_foot = offset;
+  //    p->head = psize;
+  //    mark_inuse_foot(m, p, psize);
+  //    chunk_plus_offset(p, psize)->head = FENCEPOST_HEAD;
+  //    chunk_plus_offset(p, psize+SIZE_T_SIZE)->head = 0;
+  //    if (m->least_addr == 0 || mm < m->least_addr)
+  //      m->least_addr = mm;
+  //    if ((m->footprint += mmsize) > m->max_footprint)
+  //      m->max_footprint = m->footprint;
+  //    assert(is_aligned(chunk2mem(p)));
+  //    check_mmapped_chunk(m, p);
+  //    return chunk2mem(p);
+  //  }
+  //}
   return 0;
 }
 /* Realloc using mmap */
@@ -3566,11 +3571,11 @@ static void* sys_alloc(mstate m, size_t nb) {
   size_t asize; /* allocation size */
   ensure_initialization();
   /* Directly map large chunks, but only if already initialized */
-  if (use_mmap(m) && nb >= mparams.mmap_threshold && m->topsize != 0) {
-    void* mem = mmap_alloc(m, nb);
-    if (mem != 0)
-      return mem;
-  }
+  //if (use_mmap(m) && nb >= mparams.mmap_threshold && m->topsize != 0) {
+  //  void* mem = mmap_alloc(m, nb);
+  //  if (mem != 0)
+  //    return mem;
+  //}
   asize = granularity_align(nb + SYS_ALLOC_PADDING);
   if (asize <= nb) {
     /* BEGIN android-added: set errno */
