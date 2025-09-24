@@ -451,6 +451,12 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
   disable, set to MAX_SIZE_T. This may lead to a very slight speed
   improvement at the expense of carrying around more memory.
 */
+
+#define LACKS_STDLIB_H
+#define LACKS_STRING_H
+#define LACKS_STRINGS_H
+#define LACKS_TIME_H
+
 /* Version identifier to allow people to support multiple versions */
 #ifndef DLMALLOC_VERSION
 #define DLMALLOC_VERSION 20806
@@ -745,6 +751,25 @@ extern "C" {
 #define dlindependent_comalloc independent_comalloc
 #define dlbulk_free            bulk_free
 #endif /* USE_DL_PREFIX */
+
+static void *memset(void *s, int c, size_t n) {
+    unsigned char *p = s;
+    while (n--) {
+        *p++ = (unsigned char)c;
+    }
+    return s;
+}
+
+// Minimal memcpy: copy n bytes from src to dest
+static void *memcpy(void *dest, const void *src, size_t n) {
+    unsigned char *d = dest;
+    const unsigned char *s = src;
+    while (n--) {
+        *d++ = *s++;
+    }
+    return dest;
+}
+
 /*
   malloc(size_t n)
   Returns a pointer to a newly allocated chunk of at least n bytes, or
@@ -1270,7 +1295,7 @@ DLMALLOC_EXPORT int mspace_mallopt(int, int);
 #define DEBUG 0
 #endif /* DEBUG */
 #if !defined(WIN32) && !defined(LACKS_TIME_H)
-#include <time.h>        /* for magic initialization */
+//#include <time.h>        /* for magic initialization */
 #endif /* WIN32 */
 #ifndef LACKS_STDLIB_H
 #include <stdlib.h>      /* for abort() */
