@@ -1,7 +1,9 @@
 #ifndef SECP_ALLOC_REMAP_H
 #define SECP_ALLOC_REMAP_H
 
-/* Force remap of malloc family to dlmalloc for all C TUs compiled in this crate */
+/* Force remap of malloc family to dl-prefixed variants provided by dlmalloc.
+ * USE_DL_PREFIX is defined in build.rs so these symbols are available.
+ */
 #define malloc  dlmalloc
 #define free    dlfree
 #define realloc dlrealloc

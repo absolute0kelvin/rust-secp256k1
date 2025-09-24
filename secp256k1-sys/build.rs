@@ -21,6 +21,8 @@ fn main() {
         .include("depend/secp256k1/")
         .include("depend/secp256k1/include")
         .include("depend/secp256k1/src")
+        // Build dlmalloc with dl-prefixed symbols to avoid interposing system malloc/free
+        .define("USE_DL_PREFIX", Some("1"))
         .flag_if_supported("-Wno-unused-function") // some ecmult stuff is defined but not used upstream
         .flag_if_supported("-Wno-unused-parameter") // patching out printf causes this warning
         .define("SECP256K1_API", Some(""))
